@@ -1,0 +1,69 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+:root {
+  --background: oklch(0.985 0.012 95);
+  --foreground: oklch(0.22 0.035 275);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.22 0.035 275);
+  --primary: oklch(0.66 0.245 22);
+  --primary-foreground: oklch(1 0 0);
+  --secondary: oklch(0.79 0.16 210);
+  --secondary-foreground: oklch(0.2 0.04 255);
+  --accent: oklch(0.88 0.18 92);
+  --accent-foreground: oklch(0.22 0.035 275);
+  --muted: oklch(0.94 0.025 265);
+  --muted-foreground: oklch(0.47 0.045 270);
+  --ring: oklch(0.66 0.245 22);
+  --ink: oklch(0.22 0.035 275);
+  --radius: 0.8rem;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-ring: var(--ring);
+  --color-ink: var(--ink);
+  --font-sans: "Trebuchet MS", "Arial Rounded MT Bold", ui-rounded, system-ui, sans-serif;
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+}
+
+@layer base {
+  * {
+    border-color: var(--ink);
+  }
+
+  body {
+    margin: 0;
+    min-width: 320px;
+    background: var(--background);
+    color: var(--foreground);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  button,
+  a {
+    -webkit-tap-highlight-color: transparent;
+  }
+}
+
+@utility bg-hero-pattern {
+  background-color: var(--background);
+  background-image: radial-gradient(color-mix(in oklab, var(--ink) 16%, transparent) 1.2px, transparent 1.2px);
+  background-size: 18px 18px;
+}
