@@ -1,5 +1,5 @@
 import { Link } from "@tanstack/react-router"
-import { Headphones, Sparkles } from "lucide-react"
+import { Headphones } from "lucide-react"
 import type { ReactNode } from "react"
 
 import { cn } from "@/lib/utils"
@@ -28,16 +28,6 @@ export function AppShell({ children }: AppShellProps) {
       </header>
 
       <main className="flex-1">{children}</main>
-
-      <footer className="mt-16 border-t-2 border-ink bg-card">
-        <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-5 py-6 text-sm font-bold">
-          <span>En Speak</span>
-          <span className="flex items-center gap-2 text-muted-foreground">
-            <Sparkles className="size-4 text-primary" />
-            Speaking sem pressão
-          </span>
-        </div>
-      </footer>
     </div>
   )
 }

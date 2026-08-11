@@ -5,6 +5,7 @@ export const dialogueCatalog = [
     id: "pedindo-cafe",
     title: "Pedindo um café",
     description: "Faça um pedido, escolha os detalhes e finalize a compra.",
+    category: "Alimentação",
     level: "Básico",
     estimatedMinutes: 4,
     turnCount: 6,

@@ -25,10 +25,13 @@ export type Dialogue = {
   turns: DialogueTurn[]
 }
 
+export type DialogueCategory = "Alimentação" | "Cotidiano" | "Trabalho" | "Viagem"
+
 export type DialogueCatalogItem = Pick<
   Dialogue,
   "id" | "title" | "description" | "level" | "estimatedMinutes"
 > & {
+  category: DialogueCategory
   turnCount: number
   load: () => Promise<Dialogue>
 }

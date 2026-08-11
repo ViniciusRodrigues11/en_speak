@@ -1,6 +1,5 @@
-import { Link } from "@tanstack/react-router"
+import { Link } from "@tanstack/react-router";
 import {
-  AlertCircle,
   ArrowLeft,
   Bot,
   Check,
@@ -8,20 +7,19 @@ import {
   LoaderCircle,
   Mic,
   RotateCcw,
-  Sparkles,
   Square,
   Trophy,
   UserRound,
   Volume2,
-} from "lucide-react"
-import { useEffect, useRef, useState } from "react"
+} from "lucide-react";
+import { useEffect, useRef, useState } from "react";
 
-import { Button } from "@/components/ui/button"
-import { scoreResponse } from "@/features/dialogues/score-response"
-import type { Dialogue, DialogueLine } from "@/features/dialogues/types"
-import { useSpeechRecognition } from "@/features/speech/use-speech-recognition"
-import { useSpeechSynthesis } from "@/features/speech/use-speech-synthesis"
-import { cn } from "@/lib/utils"
+import { Button } from "@/components/ui/button";
+import { scoreResponse } from "@/features/dialogues/score-response";
+import type { Dialogue, DialogueLine } from "@/features/dialogues/types";
+import { useSpeechRecognition } from "@/features/speech/use-speech-recognition";
+import { useSpeechSynthesis } from "@/features/speech/use-speech-synthesis";
+import { cn } from "@/lib/utils";
 
 type PracticeStatus =
   | "idle"
@@ -31,40 +29,49 @@ type PracticeStatus =
   | "listening"
   | "result"
   | "recognition-error"
-  | "complete"
+  | "complete";
 
 type Attempt = {
-  responseId: string
-  score: number
-  transcript: string
-}
+  responseId: string;
+  score: number;
+  transcript: string;
+};
 
 type PracticeConversationProps = {
-  dialogue: Dialogue
-}
+  dialogue: Dialogue;
+};
 
 function createResponsePlan(dialogue: Dialogue) {
   return dialogue.turns.map((turn) => {
-    const responses = turn.responses.filter((response) => response !== undefined)
-    return responses[Math.floor(Math.random() * responses.length)].id
-  })
+    const responses = turn.responses.filter(
+      (response) => response !== undefined,
+    );
+    return responses[Math.floor(Math.random() * responses.length)].id;
+  });
 }
 
 export function PracticeConversation({ dialogue }: PracticeConversationProps) {
-  const [turnIndex, setTurnIndex] = useState(0)
-  const [status, setStatus] = useState<PracticeStatus>("idle")
-  const [responsePlan, setResponsePlan] = useState(() => createResponsePlan(dialogue))
-  const [bestAttempts, setBestAttempts] = useState<Record<string, Attempt>>({})
-  const [completedAttempts, setCompletedAttempts] = useState<Record<string, Attempt>>({})
-  const [currentAttempt, setCurrentAttempt] = useState<Attempt | null>(null)
-  const [recognitionError, setRecognitionError] = useState("")
-  const conversationEndRef = useRef<HTMLDivElement>(null)
-  const { isSupported: isSpeechSupported, speak } = useSpeechSynthesis()
-  const turn = dialogue.turns[turnIndex]
+  const [turnIndex, setTurnIndex] = useState(0);
+  const [status, setStatus] = useState<PracticeStatus>("idle");
+  const [responsePlan, setResponsePlan] = useState(() =>
+    createResponsePlan(dialogue),
+  );
+  const [bestAttempts, setBestAttempts] = useState<Record<string, Attempt>>({});
+  const [completedAttempts, setCompletedAttempts] = useState<
+    Record<string, Attempt>
+  >({});
+  const [currentAttempt, setCurrentAttempt] = useState<Attempt | null>(null);
+  const [recognitionError, setRecognitionError] = useState("");
+  const [translationsVisible, setTranslationsVisible] = useState(false);
+  const conversationEndRef = useRef<HTMLDivElement>(null);
+  const speechStartedFromClickRef = useRef(false);
+  const { isSupported: isSpeechSupported, speak } = useSpeechSynthesis();
+  const turn = dialogue.turns[turnIndex];
   const selectedResponse =
-    turn.responses.find((response) => response?.id === responsePlan[turnIndex]) ?? turn.responses[0]
+    turn.responses.find(
+      (response) => response?.id === responsePlan[turnIndex],
+    ) ?? turn.responses[0];
   const {
-    isSupported: isRecognitionSupported,
     reset: resetRecognition,
     start: startRecognition,
     stop: stopRecognition,
@@ -72,144 +79,171 @@ export function PracticeConversation({ dialogue }: PracticeConversationProps) {
   } = useSpeechRecognition({
     onStart: () => setStatus("listening"),
     onResult: (result) => {
-      const score = scoreResponse(selectedResponse.text, result.transcript)
+      const score = scoreResponse(selectedResponse.text, result.transcript);
       const attempt = {
         responseId: selectedResponse.id,
         score,
         transcript: result.transcript,
-      }
+      };
 
-      setCurrentAttempt(attempt)
+      setCurrentAttempt(attempt);
       setBestAttempts((attempts) => {
-        const previous = attempts[turn.id]
+        const previous = attempts[turn.id];
         return !previous || attempt.score > previous.score
           ? { ...attempts, [turn.id]: attempt }
-          : attempts
-      })
-      setStatus("result")
+          : attempts;
+      });
+      setStatus("result");
     },
     onError: (message) => {
-      setRecognitionError(message)
-      setStatus("recognition-error")
+      setRecognitionError(message);
+      setStatus("recognition-error");
     },
-  })
+  });
 
   const beginRecognition = () => {
-    setCurrentAttempt(null)
-    setRecognitionError("")
-    setStatus("requesting-microphone")
-    void startRecognition()
-  }
+    setCurrentAttempt(null);
+    setRecognitionError("");
+    setStatus("requesting-microphone");
+    void startRecognition();
+  };
+
+  const startPractice = () => {
+    setStatus("bot-speaking");
+
+    if (!isSpeechSupported) return;
+
+    speechStartedFromClickRef.current = true;
+    speak(turn.bot.text, {
+      onEnd: beginRecognition,
+      onError: beginRecognition,
+    });
+  };
 
   useEffect(() => {
-    if (status !== "bot-speaking") return
+    if (status !== "bot-speaking") return;
+
+    if (speechStartedFromClickRef.current) {
+      speechStartedFromClickRef.current = false;
+      return;
+    }
 
     if (!isSpeechSupported) {
-      const fallbackTimer = window.setTimeout(beginRecognition, 700)
-      return () => window.clearTimeout(fallbackTimer)
+      const fallbackTimer = window.setTimeout(beginRecognition, 700);
+      return () => window.clearTimeout(fallbackTimer);
     }
 
     return speak(turn.bot.text, {
       onEnd: beginRecognition,
       onError: beginRecognition,
-    })
-  }, [isSpeechSupported, speak, status, turn.bot.text])
+    });
+  }, [isSpeechSupported, speak, status, turn.bot.text]);
 
   useEffect(() => {
-    conversationEndRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" })
-  }, [status, turnIndex])
+    const animationFrame = window.requestAnimationFrame(() => {
+      conversationEndRef.current?.scrollIntoView({
+        behavior: "smooth",
+        block: "end",
+      });
+    });
+
+    return () => window.cancelAnimationFrame(animationFrame);
+  }, [status, turnIndex]);
 
   const completedTurns = dialogue.turns.slice(
     0,
     status === "complete" ? dialogue.turns.length : turnIndex,
-  )
+  );
 
   const restart = () => {
-    resetRecognition()
-    setTurnIndex(0)
-    setResponsePlan(createResponsePlan(dialogue))
-    setBestAttempts({})
-    setCompletedAttempts({})
-    setCurrentAttempt(null)
-    setRecognitionError("")
-    setStatus("idle")
-  }
+    resetRecognition();
+    setTurnIndex(0);
+    setResponsePlan(createResponsePlan(dialogue));
+    setBestAttempts({});
+    setCompletedAttempts({});
+    setCurrentAttempt(null);
+    setRecognitionError("");
+    setStatus("idle");
+  };
 
   const retry = () => {
-    resetRecognition()
-    setCurrentAttempt(null)
-    setRecognitionError("")
-    setStatus("bot-speaking")
-  }
+    resetRecognition();
+    setCurrentAttempt(null);
+    setRecognitionError("");
+    setStatus("bot-speaking");
+  };
 
   const replayBotTurn = () => {
-    resetRecognition()
-    setCurrentAttempt(null)
-    setRecognitionError("")
-    setStatus("bot-speaking")
-  }
+    resetRecognition();
+    setCurrentAttempt(null);
+    setRecognitionError("");
+    setStatus("bot-speaking");
+  };
 
   const playSelectedResponse = () => {
-    const shouldResumePractice = status !== "idle"
+    const shouldResumePractice = status !== "idle";
 
-    resetRecognition()
-    setCurrentAttempt(null)
-    setRecognitionError("")
-    setStatus("example-speaking")
+    resetRecognition();
+    setCurrentAttempt(null);
+    setRecognitionError("");
+    setStatus("example-speaking");
 
     const finishExample = () => {
       if (shouldResumePractice) {
-        beginRecognition()
+        beginRecognition();
       } else {
-        setStatus("idle")
+        setStatus("idle");
       }
-    }
+    };
 
     speak(selectedResponse.text, {
       onEnd: finishExample,
       onError: finishExample,
-    })
-  }
+    });
+  };
 
   const advance = () => {
-    const bestAttempt = bestAttempts[turn.id]
+    const bestAttempt = bestAttempts[turn.id];
 
     if (!bestAttempt || bestAttempt.score === 0) {
-      retry()
-      return
+      retry();
+      return;
     }
 
-    setCompletedAttempts((attempts) => ({ ...attempts, [turn.id]: bestAttempt }))
-    resetRecognition()
-    setCurrentAttempt(null)
+    setCompletedAttempts((attempts) => ({
+      ...attempts,
+      [turn.id]: bestAttempt,
+    }));
+    resetRecognition();
+    setCurrentAttempt(null);
 
     if (turnIndex === dialogue.turns.length - 1) {
-      setStatus("complete")
-      return
+      setStatus("complete");
+      return;
     }
 
-    const nextTurnIndex = turnIndex + 1
-    setTurnIndex(nextTurnIndex)
-    setStatus("bot-speaking")
-  }
+    const nextTurnIndex = turnIndex + 1;
+    setTurnIndex(nextTurnIndex);
+    setStatus("bot-speaking");
+  };
 
   useEffect(() => {
-    if (status !== "result" || !currentAttempt) return
+    if (status !== "result" || !currentAttempt) return;
 
     const timer = window.setTimeout(() => {
       if (currentAttempt.score === 0) {
-        retry()
-        return
+        retry();
+        return;
       }
 
-      advance()
-    }, 1600)
+      advance();
+    }, 1600);
 
-    return () => window.clearTimeout(timer)
-  }, [currentAttempt, status])
+    return () => window.clearTimeout(timer);
+  }, [currentAttempt, status]);
 
   return (
-    <section className="mx-auto flex w-full max-w-3xl flex-col px-4 py-6 md:px-5 md:py-10">
+    <section className="mx-auto flex w-full max-w-3xl flex-col px-4 pt-6 pb-40 md:px-5 md:pt-10 md:pb-36">
       <header className="flex items-center gap-4 border-b-2 border-ink/15 pb-5">
         <Link
           to="/dialogos"
@@ -219,33 +253,40 @@ export function PracticeConversation({ dialogue }: PracticeConversationProps) {
           <ArrowLeft className="size-5" strokeWidth={3} />
         </Link>
         <div className="min-w-0 flex-1">
-          <h1 className="truncate text-xl font-black md:text-2xl">{dialogue.title}</h1>
-          <p className="text-sm font-bold text-muted-foreground">
-            {status === "complete"
-              ? "Diálogo concluído"
-              : `Fala ${turnIndex + 1} de ${dialogue.turns.length}`}
-          </p>
+          <h1 className="truncate text-xl font-black md:text-2xl">
+            {dialogue.title}
+          </h1>
+          {status !== "idle" && (
+            <p className="text-sm font-bold text-muted-foreground motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-top-1 motion-safe:duration-500">
+              {status === "complete"
+                ? "Diálogo concluído"
+                : `Fala ${turnIndex + 1} de ${dialogue.turns.length}`}
+            </p>
+          )}
         </div>
         <span className="rounded-full border-2 border-ink bg-accent px-3 py-1 text-xs font-black">
           {dialogue.level.toUpperCase()}
         </span>
       </header>
 
-      <div className="mt-4 h-2 overflow-hidden rounded-full border border-ink bg-muted">
-        <div
-          className="h-full bg-primary transition-[width] duration-300"
-          style={{
-            width: `${((status === "complete" ? dialogue.turns.length : turnIndex) / dialogue.turns.length) * 100}%`,
-          }}
-        />
-      </div>
+      {status !== "idle" && (
+        <div className="mt-4 h-2 overflow-hidden rounded-full border border-ink bg-muted motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-top-1 motion-safe:duration-500">
+          <div
+            className="h-full bg-primary transition-[width] duration-300"
+            style={{
+              width: `${((status === "complete" ? dialogue.turns.length : turnIndex) / dialogue.turns.length) * 100}%`,
+            }}
+          />
+        </div>
+      )}
 
       <div className="mt-7 flex flex-col gap-4" aria-live="polite">
         {completedTurns.map((completedTurn) => {
-          const attempt = completedAttempts[completedTurn.id]
+          const attempt = completedAttempts[completedTurn.id];
           const response =
-            completedTurn.responses.find((option) => option?.id === attempt?.responseId) ??
-            completedTurn.responses[0]
+            completedTurn.responses.find(
+              (option) => option?.id === attempt?.responseId,
+            ) ?? completedTurn.responses[0];
 
           return (
             <div key={completedTurn.id} className="space-y-3 opacity-75">
@@ -253,6 +294,7 @@ export function PracticeConversation({ dialogue }: PracticeConversationProps) {
                 speaker={dialogue.botCharacter}
                 line={completedTurn.bot}
                 type="bot"
+                translationVisible={translationsVisible}
                 completed
                 replayDisabled={status !== "complete"}
                 onReplay={() => speak(completedTurn.bot.text)}
@@ -261,36 +303,40 @@ export function PracticeConversation({ dialogue }: PracticeConversationProps) {
                 speaker="Você"
                 line={response}
                 type="user"
+                translationVisible={translationsVisible}
                 completed
                 score={attempt?.score}
               />
             </div>
-          )
+          );
         })}
 
-        {status !== "complete" && (
+        {status !== "complete" && status !== "idle" && (
           <div className="space-y-4">
-            <ConversationLine
-              speaker={dialogue.botCharacter}
-              line={turn.bot}
-              type="bot"
-              active={status === "bot-speaking"}
-              replayDisabled={
-                status === "bot-speaking" ||
-                status === "example-speaking" ||
-                status === "requesting-microphone" ||
-                status === "listening"
-              }
-              onReplay={replayBotTurn}
-            />
+            <div className="motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-2 motion-safe:duration-500">
+              <ConversationLine
+                speaker={dialogue.botCharacter}
+                line={turn.bot}
+                type="bot"
+                translationVisible={translationsVisible}
+                active={status === "bot-speaking"}
+                replayDisabled={
+                  status === "bot-speaking" ||
+                  status === "example-speaking" ||
+                  status === "requesting-microphone" ||
+                  status === "listening"
+                }
+                onReplay={replayBotTurn}
+              />
+            </div>
 
-            <div className="relative ml-auto w-[92%] max-w-xl rounded-xl border-2 border-ink bg-secondary/25 p-4 shadow-[3px_3px_0_var(--ink)] md:p-5">
+            {status !== "bot-speaking" && (
+              <div className="relative ml-auto w-[92%] max-w-xl rounded-xl border-2 border-ink bg-secondary/25 p-4 shadow-[3px_3px_0_var(--ink)] motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-2 motion-safe:duration-500 md:p-5">
               <button
                 type="button"
                 className="absolute top-3 right-3 grid size-7 cursor-pointer place-items-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40 md:top-4 md:right-4"
                 onClick={playSelectedResponse}
                 disabled={
-                  status === "bot-speaking" ||
                   status === "example-speaking" ||
                   status === "requesting-microphone" ||
                   status === "result"
@@ -300,48 +346,17 @@ export function PracticeConversation({ dialogue }: PracticeConversationProps) {
                 <Volume2 className="size-4" />
               </button>
 
-              <SpokenLine key={selectedResponse.id} line={selectedResponse} />
-
-              {(status === "requesting-microphone" || status === "listening") && (
-                <div className="mt-4 rounded-lg border-2 border-ink/20 bg-card/70 px-3 py-2.5">
-                  <p className="text-[0.68rem] font-black tracking-wide text-muted-foreground uppercase">
-                    Transcrição
-                  </p>
-                  <p className="mt-1 text-sm font-bold">
-                    {transcript ||
-                      (status === "requesting-microphone"
-                        ? "Aguardando o microfone..."
-                        : "Fale a frase escolhida.")}
-                  </p>
-                </div>
-              )}
-
-              {status === "result" && currentAttempt && (
-                <div className="mt-4 flex items-start justify-between gap-4 rounded-lg border-2 border-ink bg-card px-3 py-2.5">
-                  <div>
-                    <p className="text-[0.68rem] font-black tracking-wide text-muted-foreground uppercase">
-                      O navegador entendeu
-                    </p>
-                    <p className="mt-1 text-sm font-bold">“{currentAttempt.transcript}”</p>
-                  </div>
-                  <div className="shrink-0 text-right">
-                    <span className="inline-block rounded-md border-2 border-ink bg-accent px-2 py-1 text-sm font-black">
-                      {currentAttempt.score} pts
-                    </span>
-                    <p className="mt-1 text-[0.62rem] font-black text-muted-foreground uppercase">
-                      Melhor: {bestAttempts[turn.id]?.score ?? currentAttempt.score}
-                    </p>
-                  </div>
-                </div>
-              )}
-
-              {status === "recognition-error" && (
-                <div className="mt-4 flex items-start gap-2 rounded-lg border-2 border-primary bg-primary/10 px-3 py-2.5 text-sm font-bold">
-                  <AlertCircle className="mt-0.5 size-4 shrink-0 text-primary" />
-                  {recognitionError}
-                </div>
-              )}
-            </div>
+              <SpokenLine
+                key={selectedResponse.id}
+                line={selectedResponse}
+                transcript={transcript}
+                translationVisible={translationsVisible}
+                tracking={
+                  status === "requesting-microphone" || status === "listening"
+                }
+              />
+              </div>
+            )}
           </div>
         )}
 
@@ -355,39 +370,46 @@ export function PracticeConversation({ dialogue }: PracticeConversationProps) {
           </div>
         )}
 
-        <div ref={conversationEndRef} />
+        <div
+          ref={conversationEndRef}
+          className="scroll-mb-40 md:scroll-mb-36"
+        />
       </div>
 
       <MicrophoneDock
         status={status}
         currentScore={currentAttempt?.score}
-        recognitionSupported={isRecognitionSupported}
-        speechSupported={isSpeechSupported}
-        transcript={transcript}
-        onStatusChange={setStatus}
+        recognitionError={recognitionError}
+        translationsVisible={translationsVisible}
+        onToggleTranslations={() =>
+          setTranslationsVisible((visible) => !visible)
+        }
+        onStart={startPractice}
         onRetry={retry}
         onRestart={restart}
         onStop={stopRecognition}
       />
     </section>
-  )
+  );
 }
 
 type ConversationLineProps = {
-  speaker: string
-  line: DialogueLine
-  type: "bot" | "user"
-  active?: boolean
-  completed?: boolean
-  score?: number
-  replayDisabled?: boolean
-  onReplay?: () => void
-}
+  speaker: string;
+  line: DialogueLine;
+  type: "bot" | "user";
+  translationVisible: boolean;
+  active?: boolean;
+  completed?: boolean;
+  score?: number;
+  replayDisabled?: boolean;
+  onReplay?: () => void;
+};
 
 function ConversationLine({
   speaker,
   line,
   type,
+  translationVisible,
   active,
   completed,
   score,
@@ -395,14 +417,23 @@ function ConversationLine({
   onReplay,
 }: ConversationLineProps) {
   return (
-    <div className={cn("flex max-w-xl items-start gap-2.5", type === "user" && "ml-auto flex-row-reverse")}>
+    <div
+      className={cn(
+        "flex max-w-xl items-start gap-2.5",
+        type === "user" && "ml-auto flex-row-reverse",
+      )}
+    >
       <span
         className={cn(
           "grid size-8 shrink-0 place-items-center rounded-lg border-2 border-ink",
           type === "bot" ? "bg-accent" : "bg-secondary",
         )}
       >
-        {type === "bot" ? <Bot className="size-4" /> : <UserRound className="size-4" />}
+        {type === "bot" ? (
+          <Bot className="size-4" />
+        ) : (
+          <UserRound className="size-4" />
+        )}
       </span>
       <div
         className={cn(
@@ -413,8 +444,12 @@ function ConversationLine({
       >
         <div className="flex items-center justify-between gap-4">
           <div className="flex items-center gap-2">
-            <p className="text-[0.68rem] font-black tracking-wide text-muted-foreground uppercase">{speaker}</p>
-            {completed && <Check className="size-3.5 text-primary" strokeWidth={3} />}
+            <p className="text-[0.68rem] font-black tracking-wide text-muted-foreground uppercase">
+              {speaker}
+            </p>
+            {completed && (
+              <Check className="size-3.5 text-primary" strokeWidth={3} />
+            )}
             {score !== undefined && (
               <span className="rounded bg-accent px-1.5 py-0.5 text-[0.62rem] font-black text-foreground">
                 {score} pts
@@ -433,79 +468,136 @@ function ConversationLine({
             </button>
           )}
         </div>
-        <TranslatableLine line={line} className="mt-1" />
+        <TranslatableLine
+          line={line}
+          className="mt-1"
+          translationVisible={translationVisible}
+        />
       </div>
     </div>
-  )
+  );
 }
 
 type TranslatableLineProps = {
-  line: DialogueLine
-  className?: string
-}
+  line: DialogueLine;
+  className?: string;
+  translationVisible: boolean;
+};
 
-function TranslatableLine({ line, className }: TranslatableLineProps) {
-  const [translationVisible, setTranslationVisible] = useState(false)
-
+function TranslatableLine({ line, className, translationVisible }: TranslatableLineProps) {
   return (
     <div className={className}>
-      <p className="text-base leading-6 font-extrabold md:text-lg">{line.text}</p>
+      <p className="text-base leading-6 font-extrabold md:text-lg">
+        {line.text}
+      </p>
       {translationVisible && (
-        <p className="mt-1.5 text-sm leading-5 font-semibold text-muted-foreground">{line.translation}</p>
+        <p className="mt-1.5 text-sm leading-5 font-semibold text-muted-foreground">
+          {line.translation}
+        </p>
       )}
-      <button
-        type="button"
-        className="mt-2 inline-flex cursor-pointer items-center gap-1.5 text-xs font-black text-muted-foreground hover:text-foreground"
-        onClick={() => setTranslationVisible((visible) => !visible)}
-      >
-        <Languages className="size-3.5" />
-        {translationVisible ? "Ocultar" : "Traduzir"}
-      </button>
     </div>
-  )
+  );
 }
 
-function SpokenLine({ line }: { line: DialogueLine }) {
-  const [translationVisible, setTranslationVisible] = useState(false)
+function normalizeSpokenWord(word: string) {
+  return word
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase();
+}
+
+function findSpokenWordIndexes(expectedText: string, transcript: string) {
+  const expectedWords = Array.from(
+    expectedText.matchAll(/[\p{L}\p{N}']+/gu),
+    (match) => normalizeSpokenWord(match[0]),
+  );
+  const spokenWords = Array.from(
+    transcript.matchAll(/[\p{L}\p{N}']+/gu),
+    (match) => normalizeSpokenWord(match[0]),
+  );
+  const spokenIndexes = new Set<number>();
+  let nextExpectedIndex = 0;
+
+  for (const spokenWord of spokenWords) {
+    const matchedIndex = expectedWords.indexOf(spokenWord, nextExpectedIndex);
+
+    if (matchedIndex !== -1) {
+      spokenIndexes.add(matchedIndex);
+      nextExpectedIndex = matchedIndex + 1;
+    }
+  }
+
+  return spokenIndexes;
+}
+
+type SpokenLineProps = {
+  line: DialogueLine;
+  transcript: string;
+  tracking: boolean;
+  translationVisible: boolean;
+};
+
+function SpokenLine({ line, transcript, tracking, translationVisible }: SpokenLineProps) {
+  const spokenWordIndexes = findSpokenWordIndexes(line.text, transcript);
+  const parts = Array.from(
+    line.text.matchAll(/[\p{L}\p{N}']+|[^\p{L}\p{N}']+/gu),
+    (match) => match[0],
+  );
+  let wordIndex = 0;
 
   return (
     <div className="pt-5 text-center">
-      <p className="mx-auto max-w-lg px-8 text-xl leading-8 font-black md:text-2xl md:leading-9">
-        {line.text}
+      <p
+        className="mx-auto max-w-lg px-8 text-xl leading-8 font-black md:text-2xl md:leading-9"
+        aria-label={line.text}
+      >
+        {parts.map((part, partIndex) => {
+          const isWord = /[\p{L}\p{N}']/u.test(part);
+          const currentWordIndex = isWord ? wordIndex++ : -1;
+
+          return (
+            <span
+              key={`${partIndex}-${part}`}
+              aria-hidden="true"
+              className={cn(
+                "transition-colors duration-200",
+                tracking && isWord && "text-muted-foreground/45",
+                tracking &&
+                  isWord &&
+                  spokenWordIndexes.has(currentWordIndex) &&
+                  "rounded bg-primary/15 text-primary",
+              )}
+            >
+              {part}
+            </span>
+          );
+        })}
       </p>
       {translationVisible && (
         <p className="mt-2 text-sm leading-5 font-semibold text-muted-foreground">
           {line.translation}
         </p>
       )}
-      <button
-        type="button"
-        className="mt-2 inline-flex cursor-pointer items-center gap-1.5 text-xs font-black text-muted-foreground hover:text-foreground"
-        onClick={() => setTranslationVisible((visible) => !visible)}
-      >
-        <Languages className="size-3.5" />
-        {translationVisible ? "Ocultar" : "Traduzir"}
-      </button>
     </div>
-  )
+  );
 }
 
 type MicrophoneDockProps = {
-  status: PracticeStatus
-  currentScore?: number
-  recognitionSupported: boolean
-  speechSupported: boolean
-  transcript: string
-  onRetry: () => void
-  onStatusChange: (status: PracticeStatus) => void
-  onRestart: () => void
-  onStop: () => void
-}
+  status: PracticeStatus;
+  currentScore?: number;
+  recognitionError: string;
+  translationsVisible: boolean;
+  onToggleTranslations: () => void;
+  onRetry: () => void;
+  onStart: () => void;
+  onRestart: () => void;
+  onStop: () => void;
+};
 
 const statusContent = {
   idle: {
     eyebrow: "PRONTO PARA COMEÇAR",
-    description: "Toque no microfone para iniciar o fluxo.",
+    description: "Toque no microfone para iniciar o diálogo.",
   },
   "bot-speaking": {
     eyebrow: "BOT FALANDO",
@@ -535,88 +627,176 @@ const statusContent = {
     eyebrow: "CONCLUÍDO",
     description: "Você chegou ao fim deste diálogo.",
   },
-} satisfies Record<PracticeStatus, { eyebrow: string; description: string }>
+} satisfies Record<PracticeStatus, { eyebrow: string; description: string }>;
 
 function MicrophoneDock({
   status,
   currentScore,
-  recognitionSupported,
-  speechSupported,
-  transcript,
+  recognitionError,
+  translationsVisible,
+  onToggleTranslations,
   onRetry,
-  onStatusChange,
+  onStart,
   onRestart,
   onStop,
 }: MicrophoneDockProps) {
-  const content = statusContent[status]
-  const start = () => onStatusChange("bot-speaking")
-  const description = status === "listening" && transcript ? transcript : content.description
+  const content = statusContent[status];
+  const description =
+    status === "recognition-error" && recognitionError
+      ? recognitionError
+      : content.description;
+  const isWaitingToStart = status === "idle";
 
   return (
-    <aside className="sticky bottom-3 z-20 mt-8 rounded-2xl border-2 border-ink bg-card/95 p-3 shadow-[5px_5px_0_var(--ink)] backdrop-blur md:p-4">
-      <div className="flex items-center gap-3 md:gap-4">
-        <div className="min-w-0 flex-1" aria-live="polite">
-          <p className="text-xs font-black tracking-wide text-primary">{content.eyebrow}</p>
-          <p className="mt-0.5 truncate text-sm font-bold text-muted-foreground">{description}</p>
+    <aside
+      className={cn(
+        "fixed left-1/2 z-30 w-[calc(100%-2rem)] -translate-x-1/2 transition-[bottom,max-width,transform] duration-700 ease-in-out md:w-[calc(100%-2.5rem)]",
+        isWaitingToStart
+          ? "bottom-1/2 max-w-72 translate-y-1/2"
+          : "bottom-3 max-w-3xl translate-y-0",
+      )}
+    >
+      <div
+        className={cn(
+          "w-full border-2 border-ink bg-card/95 shadow-[4px_4px_0_var(--ink)] backdrop-blur transition-[min-height,border-radius,padding] duration-700 ease-in-out",
+          isWaitingToStart
+            ? "min-h-72 rounded-3xl px-7 py-7"
+            : "min-h-0 rounded-2xl px-4 py-3",
+        )}
+      >
+        <div
+          className={cn(
+            "flex gap-3 md:gap-4",
+            isWaitingToStart
+              ? "flex-col items-center justify-center text-center"
+              : "items-center",
+          )}
+        >
+          <div
+            className={cn("min-w-0 flex-1", isWaitingToStart && "w-full flex-none")}
+            aria-live="polite"
+          >
+            <p className="text-xs font-black tracking-wide text-primary">
+              {content.eyebrow}
+            </p>
+            <p
+              className={cn(
+                "mt-0.5 text-sm font-bold text-muted-foreground",
+                isWaitingToStart ? "whitespace-normal" : "truncate",
+              )}
+            >
+              {description}
+            </p>
+          </div>
+
+          <div
+            className={cn(
+              "flex shrink-0 items-center gap-2",
+              isWaitingToStart && "mt-8",
+            )}
+          >
+            {!isWaitingToStart && (
+              <button
+              type="button"
+              className={cn(
+                "inline-flex size-10 shrink-0 cursor-pointer items-center justify-center gap-1.5 rounded-lg px-0 text-xs font-black transition-colors sm:w-auto sm:px-2",
+                translationsVisible
+                  ? "bg-secondary/60 text-foreground"
+                  : "text-muted-foreground hover:bg-muted hover:text-foreground",
+              )}
+              onClick={onToggleTranslations}
+              aria-pressed={translationsVisible}
+              aria-label={
+                translationsVisible
+                  ? "Ocultar todas as traduções"
+                  : "Mostrar todas as traduções"
+              }
+              title={translationsVisible ? "Ocultar traduções" : "Mostrar traduções"}
+            >
+              <Languages className="size-4" />
+              <span className="hidden sm:inline">
+                {translationsVisible ? "Ocultar" : "Traduzir"}
+              </span>
+              </button>
+            )}
+
+          {status === "complete" ? (
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              onClick={onRestart}
+            >
+              <RotateCcw className="size-4" />
+              Refazer
+            </Button>
+          ) : status === "result" ? (
+            <span className="inline-flex shrink-0 items-center gap-2 rounded-lg border-2 border-ink bg-accent px-3 py-2 text-sm font-black">
+              <LoaderCircle className="size-4 animate-spin" />
+              {(currentScore ?? 0) === 0 ? "Nova tentativa" : "Avançando"}
+            </span>
+          ) : status === "recognition-error" ? (
+            <Button
+              type="button"
+              variant="secondary"
+              size="icon"
+              className="sm:size-16 sm:rounded-full"
+              onClick={onRetry}
+              aria-label="Tentar novamente"
+              title="Tentar novamente"
+            >
+              <RotateCcw className="size-5 sm:size-6" strokeWidth={2.8} />
+            </Button>
+          ) : (
+            <Button
+              type="button"
+              size="icon"
+              className={cn(
+                "size-12 shrink-0 rounded-full p-0 shadow-[4px_4px_0_var(--ink)] sm:size-16",
+                status === "listening" &&
+                  "motion-safe:animate-pulse ring-4 ring-primary/25",
+              )}
+              variant={
+                status === "bot-speaking" ||
+                status === "example-speaking" ||
+                status === "requesting-microphone"
+                  ? "outline"
+                  : "primary"
+              }
+              disabled={
+                status === "bot-speaking" ||
+                status === "example-speaking" ||
+                status === "requesting-microphone"
+              }
+              onClick={status === "idle" ? onStart : onStop}
+              aria-label={
+                status === "idle" ? "Iniciar diálogo" : "Encerrar resposta"
+              }
+            >
+              {status === "idle" && (
+                <Mic className="size-5 sm:size-7" strokeWidth={2.8} />
+              )}
+              {status === "bot-speaking" && (
+                <Volume2 className="size-5 sm:size-7" strokeWidth={2.8} />
+              )}
+              {status === "example-speaking" && (
+                <Volume2 className="size-5 sm:size-7" strokeWidth={2.8} />
+              )}
+              {status === "requesting-microphone" && (
+                <LoaderCircle
+                  className="size-5 animate-spin sm:size-7"
+                  strokeWidth={2.8}
+                />
+              )}
+              {status === "listening" && (
+                <Square className="size-5 fill-current sm:size-6" strokeWidth={2.8} />
+              )}
+            </Button>
+          )}
+          </div>
         </div>
 
-        {status === "complete" ? (
-          <Button type="button" variant="secondary" size="sm" onClick={onRestart}>
-            <RotateCcw className="size-4" />
-            Refazer
-          </Button>
-        ) : status === "result" ? (
-          <span className="inline-flex shrink-0 items-center gap-2 rounded-lg border-2 border-ink bg-accent px-3 py-2 text-sm font-black">
-            <LoaderCircle className="size-4 animate-spin" />
-            {(currentScore ?? 0) === 0 ? "Nova tentativa" : "Avançando"}
-          </span>
-        ) : status === "recognition-error" ? (
-          <Button type="button" variant="secondary" size="sm" onClick={onRetry}>
-            <RotateCcw className="size-4" />
-            Tentar novamente
-          </Button>
-        ) : (
-          <Button
-            type="button"
-            size="icon"
-            className={cn(
-              "size-16 shrink-0 rounded-full p-0 shadow-[4px_4px_0_var(--ink)]",
-              status === "listening" && "motion-safe:animate-pulse ring-4 ring-primary/25",
-            )}
-            variant={
-              status === "bot-speaking" ||
-              status === "example-speaking" ||
-              status === "requesting-microphone"
-                ? "outline"
-                : "primary"
-            }
-            disabled={
-              status === "bot-speaking" ||
-              status === "example-speaking" ||
-              status === "requesting-microphone"
-            }
-            onClick={status === "idle" ? start : onStop}
-            aria-label={status === "idle" ? "Iniciar diálogo" : "Encerrar resposta"}
-          >
-            {status === "idle" && <Mic className="size-7" strokeWidth={2.8} />}
-            {status === "bot-speaking" && <Volume2 className="size-7" strokeWidth={2.8} />}
-            {status === "example-speaking" && <Volume2 className="size-7" strokeWidth={2.8} />}
-            {status === "requesting-microphone" && (
-              <LoaderCircle className="size-7 animate-spin" strokeWidth={2.8} />
-            )}
-            {status === "listening" && <Square className="size-6 fill-current" strokeWidth={2.8} />}
-          </Button>
-        )}
       </div>
-
-      <p className="mt-2 flex items-center justify-center gap-1.5 text-[0.68rem] font-bold text-muted-foreground">
-        <Sparkles className="size-3 text-accent-foreground" />
-        {!recognitionSupported
-          ? "O reconhecimento de voz não está disponível neste navegador"
-          : speechSupported
-            ? "Voz e transcrição processadas pelo navegador — nenhum áudio é armazenado"
-            : "Transcrição disponível, mas a síntese de voz não é compatível"}
-      </p>
     </aside>
-  )
+  );
 }

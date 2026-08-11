@@ -8,7 +8,7 @@ Para cadastrar um diálogo:
 2. Preencha os metadados, personagens e falas seguindo o tipo `Dialogue`.
 3. Inclua traduções escritas e revisadas para todas as falas.
 4. Cadastre uma resposta principal e, quando fizer sentido, uma alternativa.
-5. Adicione ao `catalog.ts` apenas os metadados e o carregador dinâmico.
+5. Adicione ao `catalog.ts` apenas os metadados (incluindo a categoria) e o carregador dinâmico.
 6. Mantenha `turnCount` igual à quantidade real de falas.
 
 O catálogo é carregado na listagem. O conteúdo completo de cada roteiro só é baixado quando o usuário abre a prática correspondente.
