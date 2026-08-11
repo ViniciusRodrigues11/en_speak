@@ -3,10 +3,33 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="color-scheme" content="light dark" />
+    <meta name="theme-color" content="#fcf8ee" />
     <meta
       name="description"
       content="Pratique speaking e listening em inglês com diálogos guiados."
     />
+    <script>
+      ;(() => {
+        let storedTheme = null
+        try {
+          storedTheme = localStorage.getItem("en-speak-theme")
+        } catch {}
+        const theme = ["light", "dark", "system"].includes(storedTheme)
+          ? storedTheme
+          : "system"
+        const isDark =
+          theme === "dark" ||
+          (theme === "system" && matchMedia("(prefers-color-scheme: dark)").matches)
+        const resolvedTheme = isDark ? "dark" : "light"
+
+        document.documentElement.dataset.theme = resolvedTheme
+        document.documentElement.style.colorScheme = resolvedTheme
+        document
+          .querySelector('meta[name="theme-color"]')
+          .setAttribute("content", isDark ? "#171721" : "#fcf8ee")
+      })()
+    </script>
     <title>En Speak</title>
   </head>
   <body>

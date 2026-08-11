@@ -2,6 +2,7 @@ import { Link } from "@tanstack/react-router"
 import { Headphones } from "lucide-react"
 import type { ReactNode } from "react"
 
+import { ThemeToggle } from "@/components/theme-toggle"
 import { cn } from "@/lib/utils"
 
 type AppShellProps = {
@@ -12,17 +13,18 @@ export function AppShell({ children }: AppShellProps) {
   return (
     <div className="flex min-h-dvh flex-col">
       <header className="border-b-2 border-ink bg-card/95">
-        <div className="mx-auto flex max-w-6xl items-center justify-between px-5 py-4">
+        <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-5 py-4">
           <Link to="/" className="flex items-center gap-3" aria-label="En Speak — início">
-            <span className="grid size-11 rotate-[-3deg] place-items-center rounded-xl border-2 border-ink bg-accent shadow-[3px_3px_0_var(--ink)]">
+            <span className="grid size-11 rotate-[-3deg] place-items-center rounded-xl border-2 border-ink bg-accent shadow-[3px_3px_0_var(--shadow-ink)]">
               <Headphones className="size-6" strokeWidth={2.8} />
             </span>
-            <span className="text-xl font-black tracking-tight">EN SPEAK!</span>
+            <span className="hidden text-xl font-black tracking-tight sm:inline">EN SPEAK!</span>
           </Link>
 
-          <nav aria-label="Navegação principal" className="flex items-center gap-2">
+          <nav aria-label="Navegação principal" className="flex items-center gap-1 sm:gap-2">
             <NavLink to="/">Início</NavLink>
             <NavLink to="/dialogos">Diálogos</NavLink>
+            <ThemeToggle />
           </nav>
         </div>
       </header>

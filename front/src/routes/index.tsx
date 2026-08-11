@@ -51,7 +51,7 @@ function HomePage() {
               to="/dialogos"
               className={cn(
                 buttonVariants({ size: "lg" }),
-                "mt-8 w-full text-base shadow-[6px_6px_0_var(--ink)] sm:w-auto",
+                "mt-8 w-full text-base shadow-[6px_6px_0_var(--shadow-ink)] sm:w-auto",
               )}
             >
               Começar a praticar
@@ -64,7 +64,7 @@ function HomePage() {
             role="img"
             aria-label="Exemplo de uma prática"
           >
-            <div className="rotate-3 rounded-[2rem] border-[3px] border-ink bg-card p-6 shadow-[10px_10px_0_var(--ink)]">
+            <div className="rotate-3 rounded-[2rem] border-[3px] border-ink bg-card p-6 shadow-[10px_10px_0_var(--shadow-ink)]">
               <div className="flex items-center justify-between">
                 <span className="rounded-full bg-secondary px-3 py-1 text-xs font-black">
                   CAFETERIA

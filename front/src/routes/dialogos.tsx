@@ -83,7 +83,7 @@ function DialoguesPage() {
         </p>
       </div>
 
-      <div className="mt-7 rounded-2xl border-2 border-ink bg-card p-3 shadow-[3px_3px_0_var(--ink)] md:p-4">
+      <div className="mt-7 rounded-2xl border-2 border-ink bg-card p-3 shadow-[3px_3px_0_var(--shadow-ink)] md:p-4">
         <div className="flex flex-col gap-3 sm:flex-row">
           <label className="relative min-w-0 flex-1">
             <span className="sr-only">Pesquisar diálogos</span>
@@ -165,9 +165,9 @@ function DialogueCard({ entry }: { entry: CatalogEntry }) {
   const content = (
     <article
       className={cn(
-        "group flex h-full min-h-52 flex-col rounded-xl border-2 border-ink bg-card p-4 shadow-[3px_3px_0_var(--ink)] transition-[transform,box-shadow]",
+        "group flex h-full min-h-52 flex-col rounded-xl border-2 border-ink bg-card p-4 shadow-[3px_3px_0_var(--shadow-ink)] transition-[transform,box-shadow]",
         entry.available
-          ? "hover:-translate-y-0.5 hover:shadow-[4px_5px_0_var(--ink)]"
+          ? "hover:-translate-y-0.5 hover:shadow-[4px_5px_0_var(--shadow-ink)]"
           : "opacity-65",
       )}
     >

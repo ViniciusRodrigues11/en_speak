@@ -16,6 +16,11 @@ import {
 import { useEffect, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
+import {
+  ComicCaption,
+  ComicFeedback,
+  MicrophoneActionLines,
+} from "@/features/dialogues/components/comic-elements";
 import { scoreResponse } from "@/features/dialogues/score-response";
 import type { Dialogue, DialogueLine } from "@/features/dialogues/types";
 import { useSpeechRecognition } from "@/features/speech/use-speech-recognition";
@@ -273,7 +278,7 @@ export function PracticeConversation({ dialogue }: PracticeConversationProps) {
       <header className="flex items-center gap-4 border-b-2 border-ink/15 pb-5">
         <Link
           to="/dialogos"
-          className="grid size-10 shrink-0 place-items-center rounded-lg border-2 border-ink bg-card shadow-[2px_2px_0_var(--ink)] transition-transform active:translate-x-0.5 active:translate-y-0.5 active:shadow-none"
+          className="grid size-10 shrink-0 place-items-center rounded-lg border-2 border-ink bg-card shadow-[2px_2px_0_var(--shadow-ink)] transition-transform active:translate-x-0.5 active:translate-y-0.5 active:shadow-none"
           aria-label="Voltar aos diálogos"
         >
           <ArrowLeft className="size-5" strokeWidth={3} />
@@ -294,6 +299,12 @@ export function PracticeConversation({ dialogue }: PracticeConversationProps) {
           {dialogue.level.toUpperCase()}
         </span>
       </header>
+
+      <ComicCaption
+        eyebrow={`Cena 01 · ${dialogue.estimatedMinutes} min · ${dialogue.botCharacter} + ${dialogue.userCharacter}`}
+      >
+        {dialogue.description}
+      </ComicCaption>
 
       {status !== "idle" && (
         <div className="mt-4 h-2 overflow-hidden rounded-full border border-ink bg-muted motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-top-1 motion-safe:duration-500">
@@ -326,7 +337,7 @@ export function PracticeConversation({ dialogue }: PracticeConversationProps) {
                 onReplay={() => speak(completedTurn.bot.text, { rate: speechRate })}
               />
               <ConversationLine
-                speaker="Você"
+                speaker={`Você · ${dialogue.userCharacter}`}
                 line={response}
                 type="user"
                 translationVisible={translationsVisible}
@@ -357,7 +368,23 @@ export function PracticeConversation({ dialogue }: PracticeConversationProps) {
             </div>
 
             {status !== "bot-speaking" && (
-              <div className="relative ml-auto w-[92%] max-w-xl rounded-xl border-2 border-ink bg-secondary/25 p-4 shadow-[3px_3px_0_var(--ink)] motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-2 motion-safe:duration-500 md:p-5">
+              <div className="comic-bubble comic-bubble-user relative ml-auto w-[92%] max-w-xl rounded-xl border-2 border-ink p-4 shadow-[3px_3px_0_var(--shadow-ink)] motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-2 motion-safe:duration-500 md:p-5">
+              {status === "result" && currentAttempt && (
+                <ComicFeedback
+                  score={currentAttempt.score}
+                  className="absolute -top-5 -left-3 md:-left-8"
+                />
+              )}
+              <p
+                className={cn(
+                  "absolute top-3 text-[0.65rem] font-black tracking-wide text-muted-foreground uppercase md:top-4",
+                  status === "result" && currentAttempt
+                    ? "left-24 md:left-28"
+                    : "left-4 md:left-5",
+                )}
+              >
+                Você · {dialogue.userCharacter}
+              </p>
               <button
                 type="button"
                 className="absolute top-3 right-3 grid size-7 cursor-pointer place-items-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40 md:top-4 md:right-4"
@@ -387,10 +414,10 @@ export function PracticeConversation({ dialogue }: PracticeConversationProps) {
         )}
 
         {status === "complete" && (
-          <div className="rounded-xl border-2 border-ink bg-accent p-5 text-center shadow-[4px_4px_0_var(--ink)]">
+          <div className="rounded-xl border-2 border-ink bg-accent-surface p-5 text-center text-accent-foreground shadow-[4px_4px_0_var(--shadow-ink)]">
             <Trophy className="mx-auto size-8" strokeWidth={2.8} />
             <h2 className="mt-2 text-xl font-black">Diálogo concluído!</h2>
-            <p className="mt-1 text-sm font-bold text-muted-foreground">
+            <p className="mt-1 text-sm font-bold text-accent-foreground/75">
               Suas melhores tentativas foram mantidas em cada fala.
             </p>
           </div>
@@ -467,8 +494,8 @@ function ConversationLine({
       </span>
       <div
         className={cn(
-          "min-w-0 rounded-xl border-2 border-ink bg-card px-4 py-3 shadow-[2px_2px_0_var(--ink)]",
-          type === "user" && "bg-secondary/20",
+          "comic-bubble min-w-0 rounded-xl border-2 border-ink px-4 py-3 shadow-[2px_2px_0_var(--shadow-ink)]",
+          type === "bot" ? "comic-bubble-bot" : "comic-bubble-user",
           active && "ring-4 ring-accent/50",
         )}
       >
@@ -725,7 +752,7 @@ function MicrophoneDock({
     >
       <div
         className={cn(
-          "absolute bottom-[calc(100%+0.5rem)] left-0 z-0 w-full rounded-2xl border-2 border-ink bg-card/95 p-3 shadow-[4px_4px_0_var(--ink)] backdrop-blur",
+          "absolute bottom-[calc(100%+0.5rem)] left-0 z-0 w-full rounded-2xl border-2 border-ink bg-card/95 p-3 shadow-[4px_4px_0_var(--shadow-ink)] backdrop-blur",
           settingsPanelVisible
             ? "settings-panel-enter"
             : settingsPanelHasOpenedRef.current
@@ -768,7 +795,7 @@ function MicrophoneDock({
 
       <div
         className={cn(
-          "relative z-10 w-full border-2 border-ink bg-card/95 shadow-[4px_4px_0_var(--ink)] backdrop-blur transition-[min-height,border-radius,padding] duration-700 ease-in-out",
+          "relative z-10 w-full border-2 border-ink bg-card/95 shadow-[4px_4px_0_var(--shadow-ink)] backdrop-blur transition-[min-height,border-radius,padding] duration-700 ease-in-out",
           isWaitingToStart
             ? "min-h-72 rounded-3xl px-7 py-7"
             : "min-h-0 rounded-2xl px-4 py-3",
@@ -874,11 +901,13 @@ function MicrophoneDock({
               <RotateCcw className="size-5 sm:size-6" strokeWidth={2.8} />
             </Button>
           ) : (
-            <Button
+            <div className="relative grid shrink-0 place-items-center">
+              {status === "listening" && <MicrophoneActionLines />}
+              <Button
               type="button"
               size="icon"
               className={cn(
-                "size-12 shrink-0 rounded-full p-0 shadow-[4px_4px_0_var(--ink)] sm:size-16",
+                "size-12 shrink-0 rounded-full p-0 shadow-[4px_4px_0_var(--shadow-ink)] sm:size-16",
                 status === "listening" &&
                   "motion-safe:animate-pulse ring-4 ring-primary/25",
               )}
@@ -917,7 +946,8 @@ function MicrophoneDock({
               {status === "listening" && (
                 <Square className="size-5 fill-current sm:size-6" strokeWidth={2.8} />
               )}
-            </Button>
+              </Button>
+            </div>
           )}
           </div>
         </div>
