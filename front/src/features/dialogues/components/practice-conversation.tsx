@@ -43,10 +43,17 @@ type PracticeConversationProps = {
   dialogue: Dialogue
 }
 
+function createResponsePlan(dialogue: Dialogue) {
+  return dialogue.turns.map((turn) => {
+    const responses = turn.responses.filter((response) => response !== undefined)
+    return responses[Math.floor(Math.random() * responses.length)].id
+  })
+}
+
 export function PracticeConversation({ dialogue }: PracticeConversationProps) {
   const [turnIndex, setTurnIndex] = useState(0)
   const [status, setStatus] = useState<PracticeStatus>("idle")
-  const [selectedResponseId, setSelectedResponseId] = useState(dialogue.turns[0].responses[0].id)
+  const [responsePlan, setResponsePlan] = useState(() => createResponsePlan(dialogue))
   const [bestAttempts, setBestAttempts] = useState<Record<string, Attempt>>({})
   const [completedAttempts, setCompletedAttempts] = useState<Record<string, Attempt>>({})
   const [currentAttempt, setCurrentAttempt] = useState<Attempt | null>(null)
@@ -55,7 +62,7 @@ export function PracticeConversation({ dialogue }: PracticeConversationProps) {
   const { isSupported: isSpeechSupported, speak } = useSpeechSynthesis()
   const turn = dialogue.turns[turnIndex]
   const selectedResponse =
-    turn.responses.find((response) => response?.id === selectedResponseId) ?? turn.responses[0]
+    turn.responses.find((response) => response?.id === responsePlan[turnIndex]) ?? turn.responses[0]
   const {
     isSupported: isRecognitionSupported,
     reset: resetRecognition,
@@ -120,7 +127,7 @@ export function PracticeConversation({ dialogue }: PracticeConversationProps) {
   const restart = () => {
     resetRecognition()
     setTurnIndex(0)
-    setSelectedResponseId(dialogue.turns[0].responses[0].id)
+    setResponsePlan(createResponsePlan(dialogue))
     setBestAttempts({})
     setCompletedAttempts({})
     setCurrentAttempt(null)
@@ -183,7 +190,6 @@ export function PracticeConversation({ dialogue }: PracticeConversationProps) {
 
     const nextTurnIndex = turnIndex + 1
     setTurnIndex(nextTurnIndex)
-    setSelectedResponseId(dialogue.turns[nextTurnIndex].responses[0].id)
     setStatus("bot-speaking")
   }
 
@@ -278,50 +284,10 @@ export function PracticeConversation({ dialogue }: PracticeConversationProps) {
               onReplay={replayBotTurn}
             />
 
-            <div className="ml-auto w-[92%] max-w-xl rounded-xl border-2 border-ink bg-secondary/25 p-4 shadow-[3px_3px_0_var(--ink)] md:p-5">
-              <div className="flex items-center justify-between gap-3">
-                <p className="flex items-center gap-2 text-xs font-black tracking-wide">
-                  <UserRound className="size-4" /> SUA VEZ
-                </p>
-                {turn.responses[1] && (
-                  <div className="flex gap-1.5" aria-label="Escolha uma resposta">
-                    {turn.responses.map(
-                      (response, index) =>
-                        response && (
-                          <Button
-                            key={response.id}
-                            type="button"
-                            size="sm"
-                            variant={selectedResponseId === response.id ? "secondary" : "outline"}
-                            className="h-8 rounded-md px-2.5 text-xs shadow-[2px_2px_0_var(--ink)]"
-                            onClick={() => setSelectedResponseId(response.id)}
-                            aria-pressed={selectedResponseId === response.id}
-                            disabled={
-                              status === "requesting-microphone" ||
-                              status === "listening" ||
-                              status === "result"
-                            }
-                          >
-                            {index + 1}
-                          </Button>
-                        ),
-                    )}
-                  </div>
-                )}
-              </div>
-
-              {turn.responses.map(
-                (response) =>
-                  response?.id === selectedResponseId && (
-                    <TranslatableLine key={response.id} line={response} className="mt-3" />
-                  ),
-              )}
-
-              <Button
+            <div className="relative ml-auto w-[92%] max-w-xl rounded-xl border-2 border-ink bg-secondary/25 p-4 shadow-[3px_3px_0_var(--ink)] md:p-5">
+              <button
                 type="button"
-                variant="ghost"
-                size="sm"
-                className="mt-2 h-8 px-2 text-xs"
+                className="absolute top-3 right-3 grid size-7 cursor-pointer place-items-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40 md:top-4 md:right-4"
                 onClick={playSelectedResponse}
                 disabled={
                   status === "bot-speaking" ||
@@ -329,10 +295,12 @@ export function PracticeConversation({ dialogue }: PracticeConversationProps) {
                   status === "requesting-microphone" ||
                   status === "result"
                 }
+                aria-label="Ouvir esta resposta"
               >
                 <Volume2 className="size-4" />
-                Ouvir esta resposta
-              </Button>
+              </button>
+
+              <SpokenLine key={selectedResponse.id} line={selectedResponse} />
 
               {(status === "requesting-microphone" || status === "listening") && (
                 <div className="mt-4 rounded-lg border-2 border-ink/20 bg-card/70 px-3 py-2.5">
@@ -497,6 +465,31 @@ function TranslatableLine({ line, className }: TranslatableLineProps) {
   )
 }
 
+function SpokenLine({ line }: { line: DialogueLine }) {
+  const [translationVisible, setTranslationVisible] = useState(false)
+
+  return (
+    <div className="pt-5 text-center">
+      <p className="mx-auto max-w-lg px-8 text-xl leading-8 font-black md:text-2xl md:leading-9">
+        {line.text}
+      </p>
+      {translationVisible && (
+        <p className="mt-2 text-sm leading-5 font-semibold text-muted-foreground">
+          {line.translation}
+        </p>
+      )}
+      <button
+        type="button"
+        className="mt-2 inline-flex cursor-pointer items-center gap-1.5 text-xs font-black text-muted-foreground hover:text-foreground"
+        onClick={() => setTranslationVisible((visible) => !visible)}
+      >
+        <Languages className="size-3.5" />
+        {translationVisible ? "Ocultar" : "Traduzir"}
+      </button>
+    </div>
+  )
+}
+
 type MicrophoneDockProps = {
   status: PracticeStatus
   currentScore?: number
@@ -527,7 +520,7 @@ const statusContent = {
     description: "Confirme a permissão solicitada pelo navegador.",
   },
   listening: {
-    eyebrow: "SUA VEZ",
+    eyebrow: "GRAVANDO",
     description: "Ouvindo... toque para encerrar a resposta.",
   },
   result: {
