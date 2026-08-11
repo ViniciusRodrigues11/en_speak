@@ -7,6 +7,7 @@ import {
   LoaderCircle,
   Mic,
   RotateCcw,
+  Settings2,
   Square,
   Trophy,
   UserRound,
@@ -63,6 +64,8 @@ export function PracticeConversation({ dialogue }: PracticeConversationProps) {
   const [currentAttempt, setCurrentAttempt] = useState<Attempt | null>(null);
   const [recognitionError, setRecognitionError] = useState("");
   const [translationsVisible, setTranslationsVisible] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [speechRate, setSpeechRate] = useState(0.92);
   const conversationEndRef = useRef<HTMLDivElement>(null);
   const speechStartedFromClickRef = useRef(false);
   const { isSupported: isSpeechSupported, speak } = useSpeechSynthesis();
@@ -117,6 +120,7 @@ export function PracticeConversation({ dialogue }: PracticeConversationProps) {
     speak(turn.bot.text, {
       onEnd: beginRecognition,
       onError: beginRecognition,
+      rate: speechRate,
     });
   };
 
@@ -136,8 +140,9 @@ export function PracticeConversation({ dialogue }: PracticeConversationProps) {
     return speak(turn.bot.text, {
       onEnd: beginRecognition,
       onError: beginRecognition,
+      rate: speechRate,
     });
-  }, [isSpeechSupported, speak, status, turn.bot.text]);
+  }, [isSpeechSupported, speak, speechRate, status, turn.bot.text]);
 
   useEffect(() => {
     const animationFrame = window.requestAnimationFrame(() => {
@@ -148,7 +153,20 @@ export function PracticeConversation({ dialogue }: PracticeConversationProps) {
     });
 
     return () => window.cancelAnimationFrame(animationFrame);
-  }, [status, turnIndex]);
+  }, [settingsOpen, status, turnIndex]);
+
+  useEffect(() => {
+    if (!settingsOpen) return;
+
+    const timer = window.setTimeout(() => setSettingsOpen(false), 5000);
+    return () => window.clearTimeout(timer);
+  }, [settingsOpen, speechRate]);
+
+  useEffect(() => {
+    if (status === "requesting-microphone" || status === "listening") {
+      setSettingsOpen(false);
+    }
+  }, [status]);
 
   const completedTurns = dialogue.turns.slice(
     0,
@@ -163,6 +181,7 @@ export function PracticeConversation({ dialogue }: PracticeConversationProps) {
     setCompletedAttempts({});
     setCurrentAttempt(null);
     setRecognitionError("");
+    setSettingsOpen(false);
     setStatus("idle");
   };
 
@@ -199,6 +218,7 @@ export function PracticeConversation({ dialogue }: PracticeConversationProps) {
     speak(selectedResponse.text, {
       onEnd: finishExample,
       onError: finishExample,
+      rate: speechRate,
     });
   };
 
@@ -218,6 +238,7 @@ export function PracticeConversation({ dialogue }: PracticeConversationProps) {
     setCurrentAttempt(null);
 
     if (turnIndex === dialogue.turns.length - 1) {
+      setSettingsOpen(false);
       setStatus("complete");
       return;
     }
@@ -243,7 +264,12 @@ export function PracticeConversation({ dialogue }: PracticeConversationProps) {
   }, [currentAttempt, status]);
 
   return (
-    <section className="mx-auto flex w-full max-w-3xl flex-col px-4 pt-6 pb-40 md:px-5 md:pt-10 md:pb-36">
+    <section
+      className={cn(
+        "mx-auto flex w-full max-w-3xl flex-col px-4 pt-6 md:px-5 md:pt-10",
+        settingsOpen ? "pb-64" : "pb-40 md:pb-36",
+      )}
+    >
       <header className="flex items-center gap-4 border-b-2 border-ink/15 pb-5">
         <Link
           to="/dialogos"
@@ -297,7 +323,7 @@ export function PracticeConversation({ dialogue }: PracticeConversationProps) {
                 translationVisible={translationsVisible}
                 completed
                 replayDisabled={status !== "complete"}
-                onReplay={() => speak(completedTurn.bot.text)}
+                onReplay={() => speak(completedTurn.bot.text, { rate: speechRate })}
               />
               <ConversationLine
                 speaker="Você"
@@ -372,7 +398,7 @@ export function PracticeConversation({ dialogue }: PracticeConversationProps) {
 
         <div
           ref={conversationEndRef}
-          className="scroll-mb-40 md:scroll-mb-36"
+          className={cn(settingsOpen ? "scroll-mb-64" : "scroll-mb-40 md:scroll-mb-36")}
         />
       </div>
 
@@ -381,6 +407,10 @@ export function PracticeConversation({ dialogue }: PracticeConversationProps) {
         currentScore={currentAttempt?.score}
         recognitionError={recognitionError}
         translationsVisible={translationsVisible}
+        settingsOpen={settingsOpen}
+        speechRate={speechRate}
+        onSettingsOpenChange={setSettingsOpen}
+        onSpeechRateChange={setSpeechRate}
         onToggleTranslations={() =>
           setTranslationsVisible((visible) => !visible)
         }
@@ -490,11 +520,19 @@ function TranslatableLine({ line, className, translationVisible }: TranslatableL
       <p className="text-base leading-6 font-extrabold md:text-lg">
         {line.text}
       </p>
-      {translationVisible && (
-        <p className="mt-1.5 text-sm leading-5 font-semibold text-muted-foreground">
+      <div
+        className={cn(
+          "grid transition-[grid-template-rows,opacity,margin,transform] duration-300 ease-out motion-reduce:transition-none",
+          translationVisible
+            ? "mt-1.5 translate-y-0 grid-rows-[1fr] opacity-100"
+            : "mt-0 -translate-y-1 grid-rows-[0fr] opacity-0",
+        )}
+        aria-hidden={!translationVisible}
+      >
+        <p className="overflow-hidden text-sm leading-5 font-semibold text-muted-foreground">
           {line.translation}
         </p>
-      )}
+      </div>
     </div>
   );
 }
@@ -573,11 +611,19 @@ function SpokenLine({ line, transcript, tracking, translationVisible }: SpokenLi
           );
         })}
       </p>
-      {translationVisible && (
-        <p className="mt-2 text-sm leading-5 font-semibold text-muted-foreground">
+      <div
+        className={cn(
+          "grid transition-[grid-template-rows,opacity,margin,transform] duration-300 ease-out motion-reduce:transition-none",
+          translationVisible
+            ? "mt-2 translate-y-0 grid-rows-[1fr] opacity-100"
+            : "mt-0 -translate-y-1 grid-rows-[0fr] opacity-0",
+        )}
+        aria-hidden={!translationVisible}
+      >
+        <p className="overflow-hidden text-sm leading-5 font-semibold text-muted-foreground">
           {line.translation}
         </p>
-      )}
+      </div>
     </div>
   );
 }
@@ -587,7 +633,11 @@ type MicrophoneDockProps = {
   currentScore?: number;
   recognitionError: string;
   translationsVisible: boolean;
+  settingsOpen: boolean;
+  speechRate: number;
   onToggleTranslations: () => void;
+  onSettingsOpenChange: (open: boolean) => void;
+  onSpeechRateChange: (rate: number) => void;
   onRetry: () => void;
   onStart: () => void;
   onRestart: () => void;
@@ -629,23 +679,40 @@ const statusContent = {
   },
 } satisfies Record<PracticeStatus, { eyebrow: string; description: string }>;
 
+const speechRateOptions = [
+  { label: "Devagar", value: 0.75 },
+  { label: "Normal", value: 0.92 },
+  { label: "Rápido", value: 1.1 },
+];
+
 function MicrophoneDock({
   status,
   currentScore,
   recognitionError,
   translationsVisible,
+  settingsOpen,
+  speechRate,
   onToggleTranslations,
+  onSettingsOpenChange,
+  onSpeechRateChange,
   onRetry,
   onStart,
   onRestart,
   onStop,
 }: MicrophoneDockProps) {
+  const settingsPanelHasOpenedRef = useRef(false);
   const content = statusContent[status];
   const description =
     status === "recognition-error" && recognitionError
       ? recognitionError
       : content.description;
   const isWaitingToStart = status === "idle";
+  const settingsPanelVisible =
+    settingsOpen && !isWaitingToStart && status !== "complete";
+
+  useEffect(() => {
+    if (settingsPanelVisible) settingsPanelHasOpenedRef.current = true;
+  }, [settingsPanelVisible]);
 
   return (
     <aside
@@ -658,7 +725,50 @@ function MicrophoneDock({
     >
       <div
         className={cn(
-          "w-full border-2 border-ink bg-card/95 shadow-[4px_4px_0_var(--ink)] backdrop-blur transition-[min-height,border-radius,padding] duration-700 ease-in-out",
+          "absolute bottom-[calc(100%+0.5rem)] left-0 z-0 w-full rounded-2xl border-2 border-ink bg-card/95 p-3 shadow-[4px_4px_0_var(--ink)] backdrop-blur",
+          settingsPanelVisible
+            ? "settings-panel-enter"
+            : settingsPanelHasOpenedRef.current
+              ? "settings-panel-exit pointer-events-none"
+              : "translate-y-full opacity-0 pointer-events-none",
+        )}
+        aria-label="Configurações de voz"
+        aria-hidden={!settingsPanelVisible}
+      >
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+            <div>
+              <p className="text-xs font-black tracking-wide text-primary uppercase">
+                Velocidade da voz
+              </p>
+              <p className="mt-0.5 text-xs font-bold text-muted-foreground">
+                Ajuste o ritmo do bot e dos exemplos.
+              </p>
+            </div>
+            <div className="grid shrink-0 grid-cols-3 gap-1 rounded-xl bg-muted p-1">
+              {speechRateOptions.map((option) => (
+                <button
+                  key={option.value}
+                  type="button"
+                  className={cn(
+                    "cursor-pointer rounded-lg px-2.5 py-2 text-xs font-black transition-colors",
+                    speechRate === option.value
+                      ? "bg-primary text-primary-foreground"
+                      : "text-muted-foreground hover:bg-card hover:text-foreground",
+                  )}
+                  onClick={() => onSpeechRateChange(option.value)}
+                  aria-pressed={speechRate === option.value}
+                  tabIndex={settingsPanelVisible ? 0 : -1}
+                >
+                  {option.label}
+                </button>
+              ))}
+            </div>
+          </div>
+      </div>
+
+      <div
+        className={cn(
+          "relative z-10 w-full border-2 border-ink bg-card/95 shadow-[4px_4px_0_var(--ink)] backdrop-blur transition-[min-height,border-radius,padding] duration-700 ease-in-out",
           isWaitingToStart
             ? "min-h-72 rounded-3xl px-7 py-7"
             : "min-h-0 rounded-2xl px-4 py-3",
@@ -717,6 +827,22 @@ function MicrophoneDock({
               <span className="hidden sm:inline">
                 {translationsVisible ? "Ocultar" : "Traduzir"}
               </span>
+              </button>
+            )}
+
+            {!isWaitingToStart && status !== "complete" && (
+              <button
+                type="button"
+                className={cn(
+                  "grid size-10 shrink-0 cursor-pointer place-items-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground",
+                  settingsOpen && "bg-muted text-foreground",
+                )}
+                onClick={() => onSettingsOpenChange(!settingsOpen)}
+                aria-expanded={settingsOpen}
+                aria-label={settingsOpen ? "Fechar configurações" : "Abrir configurações"}
+                title={settingsOpen ? "Fechar configurações" : "Configurações"}
+              >
+                <Settings2 className="size-4" />
               </button>
             )}
 

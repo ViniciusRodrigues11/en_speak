@@ -3,6 +3,7 @@ import { useCallback, useEffect, useRef } from "react"
 type SpeakOptions = {
   onEnd?: () => void
   onError?: () => void
+  rate?: number
 }
 
 export function useSpeechSynthesis() {
@@ -42,7 +43,7 @@ export function useSpeechSynthesis() {
         voices.find((voice) => voice.lang.toLowerCase().startsWith("en"))
 
       utterance.lang = "en-US"
-      utterance.rate = 0.92
+      utterance.rate = options.rate ?? 0.92
       utterance.pitch = 1
 
       if (preferredVoice) {
